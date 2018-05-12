@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:json="http://www.mulesoft.org/schema/mule/json" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:spring="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd">
+    <db:mysql-config name="MySQL_Configuration" host="${database.host}" port="${database.port}" user="${database.user}" password="${database.password}" database="${database.database}" doc:name="MySQL Configuration"/>
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
+    <flow name="GetAllRecords">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/aal" allowedMethods="GET" doc:name="HTTP"/>
+        <db:select config-ref="MySQL_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[select * from american]]></db:parameterized-query>
+        </db:select>
+        <dw:transform-message doc:name="Transform Message" metadata:id="2f7a0003-e028-468b-9636-3960c9691add">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	ID: payload01.ID,
+	code: payload01.code1 ++ payload01.code2,
+	price: payload01.price as :number,
+	origin: payload01.fromAirport,
+	destination: payload01.toAirport,
+	takeOffDate: payload01.takeOffDate as :string,
+	airlineName: payload01.airlineName,
+	plane: {
+		type: payload01.planeType,
+		totalSeats: payload01.totalSeats as :number,
+		seatsAvailable: payload01.seatsAvailable as :number
+	}
+})]]></dw:set-payload>
+        </dw:transform-message>
+        <logger message="#[payload]" level="INFO" doc:name="Logger"/>
+    </flow>
+    <flow name="GetById">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/aal/{ID}" allowedMethods="GET" doc:name="HTTP"/>
+        <db:select config-ref="MySQL_Configuration" doc:name="Database">
+            <db:parameterized-query><![CDATA[select * from american where ID = #[message.inboundProperties.'http.uri.params'.ID]]]></db:parameterized-query>
+        </db:select>
+        <dw:transform-message doc:name="Transform Message" metadata:id="44275d0e-f55d-4c78-8702-8f97539d797f">
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/json
+---
+payload map ((payload01 , indexOfPayload01) -> {
+	ID: payload01.ID,
+	code: payload01.code1 ++ payload01.code2,
+	price: payload01.price as :number,
+	origin: payload01.fromAirport,
+	destination: payload01.toAirport,
+	takeOffDate: payload01.takeOffDate as :string,
+	airlineName: payload01.airlineName,
+	plane: {
+		type: payload01.planeType,
+		totalSeats: payload01.totalSeats as :number,
+		seatsAvailable: payload01.seatsAvailable as :number
+	}
+})]]></dw:set-payload>
+        </dw:transform-message>
+        <logger level="INFO" doc:name="Logger"/>
+    </flow>
+    <flow name="AmericanALPostFlow">
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/aal" allowedMethods="POST" doc:name="HTTP"/>
+        <set-payload value="{
+&quot;messge&quot;:&quot;Post Test&quot;
+}" doc:name="Set Payload"/>
+    </flow>
+</mule>
